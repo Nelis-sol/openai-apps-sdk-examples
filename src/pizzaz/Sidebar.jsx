@@ -46,7 +46,10 @@ function PlaceListItem({ place, isSelected, onClick }) {
 export default function Sidebar({ places, selectedId, onSelect }) {
   const [emblaRef] = useEmblaCarousel({ dragFree: true, loop: false });
   const displayMode = useOpenAiGlobal("displayMode");
-  const forceMobile = displayMode !== "fullscreen";
+  // Force mobile layout on mobile devices regardless of displayMode
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+  const effectiveDisplayMode = isMobile ? "mobile" : displayMode;
+  const forceMobile = effectiveDisplayMode !== "fullscreen";
   const scrollRef = React.useRef(null);
   const [showBottomFade, setShowBottomFade] = React.useState(false);
 
@@ -96,7 +99,7 @@ export default function Sidebar({ places, selectedId, onSelect }) {
                 key={place.id}
                 place={place}
                 isSelected={
-                  displayMode === "fullscreen" && selectedId === place.id
+                  effectiveDisplayMode === "fullscreen" && selectedId === place.id
                 }
                 onClick={() => onSelect(place)}
               />
@@ -142,7 +145,7 @@ export default function Sidebar({ places, selectedId, onSelect }) {
                     key={place.id}
                     place={place}
                     isSelected={
-                      displayMode === "fullscreen" && selectedId === place.id
+                      effectiveDisplayMode === "fullscreen" && selectedId === place.id
                     }
                     onClick={() => onSelect(place)}
                   />

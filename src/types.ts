@@ -20,18 +20,20 @@ export type OpenAiGlobals<
   toolOutput: ToolOutput | null;
   toolResponseMetadata: ToolResponseMetadata | null;
   widgetState: WidgetState | null;
-  setWidgetState: (state: WidgetState) => Promise<void>;
 };
 
 // currently copied from types.ts in chatgpt/web-sandbox.
 // Will eventually use a public package.
-type API = {
+type API<WidgetState = UnknownObject> = {
   callTool: CallTool;
   sendFollowUpMessage: (args: { prompt: string }) => Promise<void>;
   openExternal(payload: { href: string }): void;
 
   // Layout controls
   requestDisplayMode: RequestDisplayMode;
+  
+  // State persistence
+  setWidgetState: (state: WidgetState) => Promise<void>;
 };
 
 export type UnknownObject = Record<string, unknown>;

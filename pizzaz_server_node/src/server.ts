@@ -132,13 +132,31 @@ const toolInputParser = z.object({
   pizzaTopping: z.string()
 });
 
-const tools: Tool[] = widgets.map((widget) => ({
-  name: widget.id,
-  description: widget.title,
-  inputSchema: toolInputSchema,
-  title: widget.title,
-  _meta: widgetMeta(widget)
-}));
+// Payment configuration for pizza-carousel using x402 protocol
+const pizzaCarouselPayment = {
+  required: true,
+  price: 0.01,
+  currency: "USDC",
+  description: "Order pizza from the carousel",
+  recipient: "BuXm6nD1tWAHwB18AitXdCkYA5Yu3QKoPxJp2Rn7VjGt" // Replace with your actual Solana wallet address
+};
+
+const tools: Tool[] = widgets.map((widget) => {
+  const tool: Tool = {
+    name: widget.id,
+    description: widget.title,
+    inputSchema: toolInputSchema,
+    title: widget.title,
+    _meta: widgetMeta(widget)
+  };
+  
+  // Add payment field for pizza-carousel tool
+  if (widget.id === "pizza-carousel") {
+    (tool as any).payment = pizzaCarouselPayment;
+  }
+  
+  return tool;
+});
 
 const resources: Resource[] = widgets.map((widget) => ({
   uri: widget.templateUri,

@@ -52,7 +52,10 @@ export default function App() {
     zoom: markerCoords.length > 0 ? 12 : 2,
   }));
   const displayMode = useOpenAiGlobal("displayMode");
-  const allowInspector = displayMode === "fullscreen";
+  // Force mobile layout on mobile devices regardless of displayMode
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+  const effectiveDisplayMode = isMobile ? "mobile" : displayMode;
+  const allowInspector = effectiveDisplayMode === "fullscreen";
   const maxHeight = useMaxHeight() ?? undefined;
 
   useEffect(() => {
@@ -115,7 +118,7 @@ export default function App() {
   }
 
   function getInspectorOffsetPx() {
-    if (displayMode !== "fullscreen") return 0;
+    if (effectiveDisplayMode !== "fullscreen") return 0;
     if (typeof window === "undefined") return 0;
     const isXlUp =
       window.matchMedia && window.matchMedia("(min-width: 1280px)").matches;
@@ -159,7 +162,7 @@ export default function App() {
   useEffect(() => {
     if (!mapObj.current) return;
     mapObj.current.resize();
-  }, [maxHeight, displayMode]);
+  }, [maxHeight, effectiveDisplayMode]);
 
   useEffect(() => {
     if (
@@ -180,17 +183,17 @@ export default function App() {
       <div
         style={{
           maxHeight,
-          height: displayMode === "fullscreen" ? maxHeight - 40 : 480,
+          height: effectiveDisplayMode === "fullscreen" ? maxHeight - 40 : 480,
         }}
         className={
           "relative antialiased w-full min-h-[480px] overflow-hidden " +
-          (displayMode === "fullscreen"
+          (effectiveDisplayMode === "fullscreen"
             ? "rounded-none border-0"
             : "border border-black/10 dark:border-white/10 rounded-2xl sm:rounded-3xl")
         }
       >
         <Outlet />
-        {displayMode !== "fullscreen" && (
+        {effectiveDisplayMode !== "fullscreen" && (
           <button
             aria-label="Enter fullscreen"
             className="absolute top-4 right-4 z-30 rounded-full bg-white text-black shadow-lg ring ring-black/5 p-2.5 pointer-events-auto"
@@ -235,7 +238,7 @@ export default function App() {
         <div
           className={
             "absolute inset-0 overflow-hidden" +
-            (displayMode === "fullscreen"
+            (effectiveDisplayMode === "fullscreen"
               ? " left-[340px] right-2 top-2 bottom-4 border border-black/10 rounded-3xl"
               : "")
           }
@@ -245,14 +248,14 @@ export default function App() {
             className="w-full h-full absolute bottom-0 left-0 right-0"
             style={{
               maxHeight,
-              height: displayMode === "fullscreen" ? maxHeight : undefined,
+              height: effectiveDisplayMode === "fullscreen" ? maxHeight : undefined,
             }}
           />
         </div>
       </div>
 
       {/* Suggestion chips (bottom, fullscreen) */}
-      {displayMode === "fullscreen" && (
+      {effectiveDisplayMode === "fullscreen" && (
         <div className="hidden antialiased md:flex absolute inset-x-0 bottom-2 z-30 justify-center pointer-events-none">
           <div className="flex gap-3 pointer-events-auto">
             {["Open now", "Top rated", "Vegetarian friendly"].map((label) => (
