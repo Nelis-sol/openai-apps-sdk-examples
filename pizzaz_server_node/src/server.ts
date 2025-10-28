@@ -122,6 +122,29 @@ const toolInputSchema = {
     pizzaTopping: {
       type: "string",
       description: "Topping to mention when rendering the widget."
+    },
+    _payment: {
+      type: "object",
+      description: "Payment proof for x402 protocol (optional, required for paid tools)",
+      properties: {
+        signature: {
+          type: "string",
+          description: "Solana transaction signature"
+        },
+        timestamp: {
+          type: "string",
+          description: "Payment timestamp (ISO 8601)"
+        },
+        amount: {
+          type: "string",
+          description: "Payment amount in micro-units"
+        },
+        from: {
+          type: "string",
+          description: "Payer wallet address"
+        }
+      },
+      required: ["signature", "timestamp", "amount", "from"]
     }
   },
   required: ["pizzaTopping"],
@@ -129,7 +152,13 @@ const toolInputSchema = {
 } as const;
 
 const toolInputParser = z.object({
-  pizzaTopping: z.string()
+  pizzaTopping: z.string(),
+  _payment: z.object({
+    signature: z.string(),
+    timestamp: z.string(),
+    amount: z.string(),
+    from: z.string()
+  }).optional()
 });
 
 // Payment configuration for pizza-carousel using x402 protocol
@@ -227,7 +256,46 @@ function createPizzazServer(): Server {
     }
 
     const args = toolInputParser.parse(request.params.arguments ?? {});
+    
+    // MCP x402 Implementation: Check if tool requires payment
+    const isPaidTool = widget.id === "pizza-carousel";
+    
+    if (isPaidTool) {
+      // Check if payment proof was provided
+      if (!args._payment) {
+        // Return JSON-RPC error with payment requirements (x402 equivalent)
+        const error: any = new Error("Payment required for this tool");
+        error.code = -32001; // Custom error code for payment required
+        error.data = {
+          paymentRequirements: {
+            price: {
+              amount: String(pizzaCarouselPayment.price * 1_000_000), // Convert to micro-units
+              asset: {
+                address: "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU" // USDC devnet
+              }
+            },
+            recipient: pizzaCarouselPayment.recipient,
+            description: pizzaCarouselPayment.description,
+            currency: pizzaCarouselPayment.currency,
+            network: "solana-devnet"
+          }
+        };
+        throw error;
+      }
+      
+      // Payment proof provided - log it (verification can be added later)
+      console.log("\n💰 Payment received for pizza-carousel:");
+      console.log("  Signature:", args._payment.signature);
+      console.log("  Amount:", args._payment.amount);
+      console.log("  From:", args._payment.from);
+      console.log("  Timestamp:", args._payment.timestamp);
+      
+      // TODO: Optional - verify payment on-chain
+      // const isValid = await verifyPaymentOnChain(args._payment);
+      // if (!isValid) throw new Error("Invalid payment");
+    }
 
+    // Return the widget content
     return {
       content: [
         {
