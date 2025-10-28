@@ -161,31 +161,86 @@ const toolInputParser = z.object({
   }).optional()
 });
 
-// Payment configuration for pizza-carousel using x402 protocol
-const pizzaCarouselPayment = {
+// Payment configuration for place-pizza-order tool using x402 protocol
+const pizzaOrderPayment = {
   required: true,
-  price: 0.01,
+  price: 15.0,  // Actual pizza price
   currency: "USDC",
-  description: "Order pizza from the carousel",
-  recipient: "BuXm6nD1tWAHwB18AitXdCkYA5Yu3QKoPxJp2Rn7VjGt" // Replace with your actual Solana wallet address
+  description: "Order a pizza",
+  recipient: "BuXm6nD1tWAHwB18AitXdCkYA5Yu3QKoPxJp2Rn7VjGt"
 };
 
-const tools: Tool[] = widgets.map((widget) => {
-  const tool: Tool = {
-    name: widget.id,
-    description: widget.title,
-    inputSchema: toolInputSchema,
-    title: widget.title,
-    _meta: widgetMeta(widget)
-  };
-  
-  // Add payment field for pizza-carousel tool
-  if (widget.id === "pizza-carousel") {
-    (tool as any).payment = pizzaCarouselPayment;
-  }
-  
-  return tool;
+// Widget tools (all free now)
+const widgetTools: Tool[] = widgets.map((widget) => ({
+  name: widget.id,
+  description: widget.title,
+  inputSchema: toolInputSchema,
+  title: widget.title,
+  _meta: widgetMeta(widget)
+}));
+
+// Order tool input schema
+const orderInputSchema = {
+  type: "object",
+  properties: {
+    placeId: {
+      type: "string",
+      description: "ID of the pizza place to order from"
+    },
+    placeName: {
+      type: "string",
+      description: "Name of the pizza place"
+    },
+    _payment: {
+      type: "object",
+      description: "Payment proof for x402 protocol (required for paid tools)",
+      properties: {
+        signature: {
+          type: "string",
+          description: "Solana transaction signature"
+        },
+        timestamp: {
+          type: "string",
+          description: "Payment timestamp (ISO 8601)"
+        },
+        amount: {
+          type: "string",
+          description: "Payment amount in micro-units"
+        },
+        from: {
+          type: "string",
+          description: "Payer wallet address"
+        }
+      },
+      required: ["signature", "timestamp", "amount", "from"]
+    }
+  },
+  required: ["placeId", "placeName"],
+  additionalProperties: false
+} as const;
+
+const orderInputParser = z.object({
+  placeId: z.string(),
+  placeName: z.string(),
+  _payment: z.object({
+    signature: z.string(),
+    timestamp: z.string(),
+    amount: z.string(),
+    from: z.string()
+  }).optional()
 });
+
+// Place pizza order tool (PAID)
+const placeOrderTool: Tool = {
+  name: "place-pizza-order",
+  title: "Place Pizza Order",
+  description: "Place an order for pizza from a restaurant",
+  inputSchema: orderInputSchema,
+  payment: pizzaOrderPayment as any
+};
+
+// Combine all tools
+const tools: Tool[] = [...widgetTools, placeOrderTool];
 
 const resources: Resource[] = widgets.map((widget) => ({
   uri: widget.templateUri,
@@ -249,19 +304,13 @@ function createPizzazServer(): Server {
   }));
 
   server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest) => {
-    const widget = widgetsById.get(request.params.name);
-
-    if (!widget) {
-      throw new Error(`Unknown tool: ${request.params.name}`);
-    }
-
-    const args = toolInputParser.parse(request.params.arguments ?? {});
+    const toolName = request.params.name;
     
-    // MCP x402 Implementation: Check if tool requires payment
-    const isPaidTool = widget.id === "pizza-carousel";
-    
-    if (isPaidTool) {
-      // Check if payment proof was provided
+    // Handle place-pizza-order tool (PAID)
+    if (toolName === "place-pizza-order") {
+      const args = orderInputParser.parse(request.params.arguments ?? {});
+      
+      // MCP x402: Check if payment proof was provided
       if (!args._payment) {
         // Return JSON-RPC error with payment requirements (x402 equivalent)
         const error: any = new Error("Payment required for this tool");
@@ -269,14 +318,14 @@ function createPizzazServer(): Server {
         error.data = {
           paymentRequirements: {
             price: {
-              amount: String(pizzaCarouselPayment.price * 1_000_000), // Convert to micro-units
+              amount: String(pizzaOrderPayment.price * 1_000_000), // Convert to micro-units
               asset: {
                 address: "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU" // USDC devnet
               }
             },
-            recipient: pizzaCarouselPayment.recipient,
-            description: pizzaCarouselPayment.description,
-            currency: pizzaCarouselPayment.currency,
+            recipient: pizzaOrderPayment.recipient,
+            description: pizzaOrderPayment.description,
+            currency: pizzaOrderPayment.currency,
             network: "solana-devnet"
           }
         };
@@ -284,18 +333,37 @@ function createPizzazServer(): Server {
       }
       
       // Payment proof provided - log it (verification can be added later)
-      console.log("\n💰 Payment received for pizza-carousel:");
+      console.log("\n🍕💰 Pizza order received with payment:");
+      console.log("  Place:", args.placeName, `(${args.placeId})`);
       console.log("  Signature:", args._payment.signature);
-      console.log("  Amount:", args._payment.amount);
+      console.log("  Amount:", args._payment.amount, "micro-USDC");
       console.log("  From:", args._payment.from);
       console.log("  Timestamp:", args._payment.timestamp);
       
       // TODO: Optional - verify payment on-chain
       // const isValid = await verifyPaymentOnChain(args._payment);
       // if (!isValid) throw new Error("Invalid payment");
+      
+      // Return order confirmation
+      return {
+        content: [
+          {
+            type: "text",
+            text: `✅ Pizza order placed successfully!\n\nRestaurant: ${args.placeName}\nOrder ID: ${Date.now()}\nPayment: ${Number(args._payment.amount) / 1_000_000} USDC\n\nYour pizza will arrive in 30 minutes! 🍕`
+          }
+        ]
+      };
+    }
+    
+    // Handle widget tools (FREE)
+    const widget = widgetsById.get(toolName);
+    if (!widget) {
+      throw new Error(`Unknown tool: ${toolName}`);
     }
 
-    // Return the widget content
+    const args = toolInputParser.parse(request.params.arguments ?? {});
+    
+    // Return the widget content (no payment required)
     return {
       content: [
         {

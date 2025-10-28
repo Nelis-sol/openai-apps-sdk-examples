@@ -28,9 +28,29 @@ export default function PlaceCard({ place }) {
         <div className="mt-5">
           <button
             type="button"
+            onClick={() => {
+              // Trigger MCP tool call to place-pizza-order
+              // AgentOS should provide an MCP bridge API like window.mcpBridge
+              if (window.mcpBridge?.callTool) {
+                window.mcpBridge.callTool('place-pizza-order', {
+                  placeId: place.id,
+                  placeName: place.name
+                });
+              } else {
+                // Fallback: use postMessage to communicate with parent
+                window.parent.postMessage({
+                  type: 'mcp-tool-call',
+                  tool: 'place-pizza-order',
+                  arguments: {
+                    placeId: place.id,
+                    placeName: place.name
+                  }
+                }, '*');
+              }
+            }}
             className="cursor-pointer inline-flex items-center rounded-full bg-[#F46C21] text-white px-4 py-1.5 text-sm font-medium hover:opacity-90 active:opacity-100"
           >
-            Learn more
+            Order now
           </button>
         </div>
       </div>
