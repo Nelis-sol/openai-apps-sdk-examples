@@ -29,10 +29,9 @@ export default function PlaceCard({ place }) {
           <button
             type="button"
             onClick={() => {
-              // Trigger MCP tool call to place-pizza-order
-              // AgentOS should provide an MCP bridge API like window.mcpBridge
-              if (window.mcpBridge?.callTool) {
-                window.mcpBridge.callTool('place-pizza-order', {
+              // Use the existing AgentOS API to call the tool
+              if (window.openai?.callTool) {
+                window.openai.callTool('place-pizza-order', {
                   placeId: place.id,
                   placeName: place.name
                 });
