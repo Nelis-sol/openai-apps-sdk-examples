@@ -317,23 +317,25 @@ function createPizzazServer(): Server {
       // MCP x402: Check if payment proof was provided
       if (!args._payment) {
         // Return JSON-RPC error with payment requirements (x402 equivalent)
-        const error: any = new Error("Payment required for this tool");
-        error.code = -32001; // Custom error code for payment required
-        error.data = {
-          paymentRequirements: {
-            price: {
-              amount: String(pizzaOrderPayment.price * 1_000_000), // Convert to micro-units
-              asset: {
-                address: "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU" // USDC devnet
-              }
-            },
-            recipient: pizzaOrderPayment.recipient,
-            description: pizzaOrderPayment.description,
-            currency: pizzaOrderPayment.currency,
-            network: "solana-devnet"
+        // Throw a plain object so MCP SDK serializes the data field properly
+        throw {
+          code: -32001, // Custom error code for payment required
+          message: "Payment required for this tool",
+          data: {
+            paymentRequirements: {
+              price: {
+                amount: String(pizzaOrderPayment.price * 1_000_000), // Convert to micro-units
+                asset: {
+                  address: "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU" // USDC devnet
+                }
+              },
+              recipient: pizzaOrderPayment.recipient,
+              description: pizzaOrderPayment.description,
+              currency: pizzaOrderPayment.currency,
+              network: "solana-devnet"
+            }
           }
         };
-        throw error;
       }
       
       // Payment proof provided - log it (verification can be added later)
