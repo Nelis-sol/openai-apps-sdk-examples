@@ -236,7 +236,11 @@ const placeOrderTool: Tool = {
   title: "Place Pizza Order",
   description: "Place an order for pizza from a restaurant",
   inputSchema: orderInputSchema,
-  payment: pizzaOrderPayment as any
+  payment: pizzaOrderPayment as any,
+  _meta: {
+    "openai/toolInvocation/invoking": "Placing your pizza order",
+    "openai/toolInvocation/invoked": "Pizza order placed"
+  }
 };
 
 // Combine all tools
