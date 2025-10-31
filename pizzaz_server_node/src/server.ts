@@ -16,7 +16,9 @@ import {
   type ReadResourceRequest,
   type Resource,
   type ResourceTemplate,
-  type Tool
+  type Tool,
+  McpError,
+  ErrorCode
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
@@ -317,11 +319,11 @@ function createPizzazServer(): Server {
       // MCP x402: Check if payment proof was provided
       if (!args._payment) {
         // Return JSON-RPC error with payment requirements (x402 equivalent)
-        // Throw a plain object so MCP SDK serializes the data field properly
-        throw {
-          code: -32001, // Custom error code for payment required
-          message: "Payment required for this tool",
-          data: {
+        // Use McpError with custom code -32001 for payment required
+        throw new McpError(
+          -32001, // Custom error code for payment required
+          "Payment required for this tool",
+          {
             paymentRequirements: {
               price: {
                 amount: String(pizzaOrderPayment.price * 1_000_000), // Convert to micro-units
@@ -335,7 +337,7 @@ function createPizzazServer(): Server {
               network: "solana-devnet"
             }
           }
-        };
+        );
       }
       
       // Payment proof provided - log it (verification can be added later)
